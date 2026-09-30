@@ -6,3 +6,5 @@ too_many_requests_waiter.txt
 oci_last_output.txt
 verbose.on
 bot/node_modules/
+bot/bot.log
+bot/bot.err.log
