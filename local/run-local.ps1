@@ -18,5 +18,5 @@ if (Test-Path -LiteralPath (Join-Path $repo 'verbose.on')) {
 }
 
 if ($output -match 'ocid1\.instance|Already have an instance') {
-    schtasks /Change /TN 'OCI ARM Capacity' /DISABLE 2>&1 | Out-Null
+    Disable-ScheduledTask -TaskName 'OCI ARM Capacity' -ErrorAction SilentlyContinue | Out-Null
 }

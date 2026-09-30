@@ -9,6 +9,7 @@ require "{$pathPrefix}vendor/autoload.php";
 
 use Dotenv\Dotenv;
 use Hitrov\Exception\ApiCallException;
+use Hitrov\Exception\TooManyRequestsWaiterException;
 use Hitrov\FileCache;
 use Hitrov\OciApi;
 use Hitrov\OciConfig;
@@ -92,6 +93,9 @@ foreach ($availabilityDomains as $availabilityDomainEntity) {
     $availabilityDomain = is_array($availabilityDomainEntity) ? $availabilityDomainEntity['name'] : $availabilityDomainEntity;
     try {
         $instanceDetails = $api->createInstance($config, $shape, getenv('OCI_SSH_PUBLIC_KEY'), $availabilityDomain);
+    } catch(TooManyRequestsWaiterException $e) {
+        echo $e->getMessage() . "\n";
+        return;
     } catch(ApiCallException $e) {
         $message = $e->getMessage();
         echo "$message\n";
