@@ -1,6 +1,6 @@
 const fs = require('node:fs');
 const path = require('node:path');
-const { Client, GatewayIntentBits, Events } = require('discord.js');
+const { Client, GatewayIntentBits, Events, PermissionFlagsBits } = require('discord.js');
 
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
@@ -20,6 +20,38 @@ function setVerbose(on) {
   } else if (fs.existsSync(verboseFile)) {
     fs.unlinkSync(verboseFile);
   }
+}
+
+async function clearBotMessages(channel, botId) {
+  let deleted = 0;
+  let before;
+  const cutoff = Date.now() - 14 * 24 * 60 * 60 * 1000;
+
+  while (true) {
+    const fetched = await channel.messages.fetch({ limit: 100, before });
+    if (fetched.size === 0) break;
+    before = fetched.last().id;
+
+    const botMsgs = [...fetched.values()].filter((m) => m.author.id === botId);
+    if (botMsgs.length > 0) {
+      const recent = botMsgs.filter((m) => m.createdTimestamp > cutoff);
+      const old = botMsgs.filter((m) => m.createdTimestamp <= cutoff);
+
+      if (recent.length > 1) {
+        await channel.bulkDelete(recent, true).catch(() => {});
+      } else if (recent.length === 1) {
+        await recent[0].delete().catch(() => {});
+      }
+      for (const m of old) {
+        await m.delete().catch(() => {});
+      }
+      deleted += botMsgs.length;
+    }
+
+    if (fetched.size < 100) break;
+  }
+
+  return deleted;
 }
 
 const client = new Client({
@@ -44,10 +76,26 @@ client.on(Events.MessageCreate, async (message) => {
     return;
   }
 
+  if (/^[!/]clearlogs$/i.test(content)) {
+    const canManage = message.member
+      && (message.member.permissions.has(PermissionFlagsBits.ManageMessages)
+        || message.member.permissions.has(PermissionFlagsBits.Administrator));
+
+    if (!canManage) {
+      await message.reply('You need the Manage Messages permission to do that.');
+      return;
+    }
+
+    const deleted = await clearBotMessages(message.channel, client.user.id);
+    const reply = await message.reply(`Cleared ${deleted} of my message(s).`);
+    setTimeout(() => reply.delete().catch(() => {}), 5000);
+    return;
+  }
+
   const match = content.match(/^[!/]verbose(?:\s+(on|off|status))?$/i);
   if (!match) {
     if (/^[!/]help$/i.test(content)) {
-      await message.reply('Commands: `!verbose`, `!verbose on`, `!verbose off`, `!verbose status`');
+      await message.reply('Commands: `!verbose [on|off|status]`, `!clearlogs`, `!ping`');
     }
     return;
   }
