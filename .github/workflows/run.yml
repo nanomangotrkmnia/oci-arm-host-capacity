@@ -3,7 +3,7 @@ name: OCI ARM Capacity
 on:
   workflow_dispatch:
   schedule:
-    - cron: '*/5 * * * *'
+    - cron: '0 * * * *'
 
 concurrency:
   group: oci-arm-capacity
@@ -12,6 +12,7 @@ concurrency:
 jobs:
   run-script:
     runs-on: ubuntu-latest
+    timeout-minutes: 65
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -26,11 +27,38 @@ jobs:
       - name: Install dependencies
         run: composer install --prefer-dist --no-progress --no-interaction
 
-      - name: Run script
+      - name: Prepare private key
         run: |
           printf '%s\n' "${{ secrets.OCI_PRIVATE_KEY }}" > "$RUNNER_TEMP/oci_key.pem"
           chmod 600 "$RUNNER_TEMP/oci_key.pem"
-          OCI_PRIVATE_KEY_FILENAME="$RUNNER_TEMP/oci_key.pem" php index.php
+          echo "OCI_PRIVATE_KEY_FILENAME=$RUNNER_TEMP/oci_key.pem" >> "$GITHUB_ENV"
+
+      - name: Run script (batched for the hour)
+        id: run
+        shell: bash
+        run: |
+          set +e
+          end=$((SECONDS + 3300))
+          attempts=0
+          last=""
+          done="false"
+          while [ "$SECONDS" -lt "$end" ]; do
+            out=$(php index.php 2>&1)
+            attempts=$((attempts + 1))
+            last="$out"
+            echo "--- attempt #$attempts at $(date -u +%H:%M:%S) ---"
+            echo "$out"
+            if printf '%s' "$out" | grep -qE 'ocid1\.instance|Already have an instance'; then
+              done="true"
+              break
+            fi
+            sleep 60
+          done
+          {
+            echo "done=$done"
+            echo "attempts=$attempts"
+          } >> "$GITHUB_OUTPUT"
+          printf '%s' "$last" > oci_last_output.txt
         env:
           OCI_REGION: ${{ secrets.OCI_REGION }}
           OCI_USER_ID: ${{ secrets.OCI_USER_ID }}
@@ -48,6 +76,21 @@ jobs:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
           DISCORD_MENTION_ID: ${{ secrets.DISCORD_MENTION_ID }}
           DISCORD_GIF_URL: ${{ secrets.DISCORD_GIF_URL }}
+          WHATSAPP_PHONE: ${{ secrets.WHATSAPP_PHONE }}
+          WHATSAPP_API_KEY: ${{ secrets.WHATSAPP_API_KEY }}
+          TELEGRAM_USER_ID: ${{ secrets.TELEGRAM_USER_ID }}
+          TELEGRAM_BOT_API_KEY: ${{ secrets.TELEGRAM_BOT_API_KEY }}
+
+      - name: Send hourly summary
+        if: steps.run.outputs.done != 'true'
+        shell: bash
+        run: |
+          summary=$(tr '\n' ' ' < oci_last_output.txt | tr -s ' ' | head -c 300)
+          export NOTIFY_MESSAGE="OCI ARM: no capacity after ${{ steps.run.outputs.attempts }} attempts this hour. Last result: $summary"
+          php notify.php
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          DISCORD_MENTION_ID: ${{ secrets.DISCORD_MENTION_ID }}
           WHATSAPP_PHONE: ${{ secrets.WHATSAPP_PHONE }}
           WHATSAPP_API_KEY: ${{ secrets.WHATSAPP_API_KEY }}
           TELEGRAM_USER_ID: ${{ secrets.TELEGRAM_USER_ID }}
