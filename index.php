@@ -54,13 +54,18 @@ if (getenv('TOO_MANY_REQUESTS_TIME_WAIT')) {
 }
 $notifier = (function (): \Hitrov\Interfaces\NotifierInterface {
     /*
-     * if you have own https://core.telegram.org/bots
-     * and set TELEGRAM_BOT_API_KEY and your TELEGRAM_USER_ID in .env
+     * WhatsApp via CallMeBot: set WHATSAPP_PHONE and WHATSAPP_API_KEY in .env
+     * Telegram: set TELEGRAM_BOT_API_KEY and TELEGRAM_USER_ID in .env
      *
      * then you can get notified when script will succeed.
      * otherwise - don't mind OR develop you own NotifierInterface
      * to e.g. send SMS or email.
      */
+    $whatsApp = new \Hitrov\Notification\WhatsApp();
+    if ($whatsApp->isSupported()) {
+        return $whatsApp;
+    }
+
     return new \Hitrov\Notification\Telegram();
 })();
 
