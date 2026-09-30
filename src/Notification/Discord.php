@@ -17,7 +17,8 @@ class Discord implements NotifierInterface
      */
     public function notify(string $message): array
     {
-        $webhookUrl = getenv('DISCORD_WEBHOOK_URL');
+        $botToken = getenv('DISCORD_BOT_TOKEN');
+        $channelId = getenv('DISCORD_CHANNEL_ID');
         $mentionId = getenv('DISCORD_MENTION_ID');
         $roleId = getenv('DISCORD_MENTION_ROLE_ID');
         $gifUrl = getenv('DISCORD_GIF_URL');
@@ -45,14 +46,17 @@ class Discord implements NotifierInterface
 
         $curl = curl_init();
         curl_setopt_array($curl, [
-            CURLOPT_URL => $webhookUrl,
+            CURLOPT_URL => "https://discord.com/api/v10/channels/$channelId/messages",
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_MAXREDIRS => 1,
             CURLOPT_TIMEOUT => 10,
             CURLOPT_FOLLOWLOCATION => true,
             CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
             CURLOPT_CUSTOMREQUEST => 'POST',
-            CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+            CURLOPT_HTTPHEADER => [
+                'Content-Type: application/json',
+                "Authorization: Bot $botToken",
+            ],
             CURLOPT_POSTFIELDS => $body,
         ]);
 
@@ -75,6 +79,6 @@ class Discord implements NotifierInterface
 
     public function isSupported(): bool
     {
-        return !empty(getenv('DISCORD_WEBHOOK_URL'));
+        return !empty(getenv('DISCORD_BOT_TOKEN')) && !empty(getenv('DISCORD_CHANNEL_ID'));
     }
 }

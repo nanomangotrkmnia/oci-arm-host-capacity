@@ -9,23 +9,27 @@ $dotenv = Dotenv::createUnsafeImmutable(__DIR__, '.env');
 $dotenv->safeLoad();
 
 /**
- * Post a plain message to the configured Discord webhook.
+ * Post a plain message to the configured Discord channel as the bot.
  *
  * @return array{http_code:int, response:string}
  */
 function discord_post(string $content): array
 {
-    $webhookUrl = getenv('DISCORD_WEBHOOK_URL');
-    if (!$webhookUrl) {
-        throw new RuntimeException('DISCORD_WEBHOOK_URL is not set in .env');
+    $botToken = getenv('DISCORD_BOT_TOKEN');
+    $channelId = getenv('DISCORD_CHANNEL_ID');
+    if (!$botToken || !$channelId) {
+        throw new RuntimeException('DISCORD_BOT_TOKEN / DISCORD_CHANNEL_ID are not set in .env');
     }
 
-    $curl = curl_init($webhookUrl);
+    $curl = curl_init("https://discord.com/api/v10/channels/$channelId/messages");
     curl_setopt_array($curl, [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_TIMEOUT => 10,
         CURLOPT_POST => true,
-        CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+        CURLOPT_HTTPHEADER => [
+            'Content-Type: application/json',
+            "Authorization: Bot $botToken",
+        ],
         CURLOPT_POSTFIELDS => json_encode(['content' => $content]),
     ]);
 
