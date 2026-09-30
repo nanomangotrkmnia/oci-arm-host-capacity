@@ -18,8 +18,21 @@ class Discord implements NotifierInterface
     public function notify(string $message): array
     {
         $webhookUrl = getenv('DISCORD_WEBHOOK_URL');
+        $mentionId = getenv('DISCORD_MENTION_ID');
+        $gifUrl = getenv('DISCORD_GIF_URL');
 
-        $body = json_encode(['content' => $message]);
+        $payload = [
+            'content' => $mentionId ? "<@$mentionId> $message" : $message,
+            'allowed_mentions' => ['parse' => ['users']],
+        ];
+
+        if ($gifUrl) {
+            $payload['embeds'] = [
+                ['image' => ['url' => $gifUrl]],
+            ];
+        }
+
+        $body = json_encode($payload);
 
         $curl = curl_init();
         curl_setopt_array($curl, [
