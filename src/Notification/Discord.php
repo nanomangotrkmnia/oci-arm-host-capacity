@@ -22,7 +22,7 @@ class Discord implements NotifierInterface
         $gifUrl = getenv('DISCORD_GIF_URL');
 
         $payload = [
-            'content' => $mentionId ? "<@$mentionId> $message" : $message,
+            'content' => $this->mention($mentionId) . $message,
             'allowed_mentions' => ['parse' => ['users']],
         ];
 
@@ -67,5 +67,14 @@ class Discord implements NotifierInterface
     public function isSupported(): bool
     {
         return !empty(getenv('DISCORD_WEBHOOK_URL'));
+    }
+
+    private function mention(string $mention): string
+    {
+        if (!$mention) {
+            return '';
+        }
+
+        return ctype_digit($mention) ? "<@$mention> " : "@$mention ";
     }
 }
