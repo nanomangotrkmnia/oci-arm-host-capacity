@@ -8,7 +8,7 @@ on:
         required: false
         default: '3300'
   schedule:
-    - cron: '0 * * * *'
+    - cron: '7 * * * *'
 
 concurrency:
   group: oci-arm-capacity
