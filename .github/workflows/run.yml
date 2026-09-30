@@ -2,6 +2,11 @@ name: OCI ARM Capacity
 
 on:
   workflow_dispatch:
+    inputs:
+      loop_seconds:
+        description: 'How long to keep trying (seconds). Defaults to 3300 (~55 min).'
+        required: false
+        default: '3300'
   schedule:
     - cron: '0 * * * *'
 
@@ -38,7 +43,7 @@ jobs:
         shell: bash
         run: |
           set +e
-          end=$((SECONDS + 3300))
+          end=$((SECONDS + ${{ inputs.loop_seconds || 3300 }}))
           attempts=0
           last=""
           done="false"
@@ -52,7 +57,12 @@ jobs:
               done="true"
               break
             fi
-            sleep 60
+            if printf '%s' "$out" | grep -q 'TooManyRequests'; then
+              echo "Rate limited by OCI; backing off 600s"
+              sleep 600
+            else
+              sleep 60
+            fi
           done
           {
             echo "done=$done"
@@ -72,7 +82,6 @@ jobs:
           OCI_SHAPE: ${{ secrets.OCI_SHAPE }}
           OCI_MAX_INSTANCES: ${{ secrets.OCI_MAX_INSTANCES }}
           OCI_SSH_PUBLIC_KEY: ${{ secrets.OCI_SSH_PUBLIC_KEY }}
-          TOO_MANY_REQUESTS_TIME_WAIT: ${{ secrets.TOO_MANY_REQUESTS_TIME_WAIT }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
           DISCORD_MENTION_ID: ${{ secrets.DISCORD_MENTION_ID }}
           DISCORD_GIF_URL: ${{ secrets.DISCORD_GIF_URL }}
