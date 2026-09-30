@@ -2,3 +2,5 @@ vendor/
 .env
 oci_cache.json
 oci.log
+too_many_requests_waiter.txt
+oci_last_output.txt
