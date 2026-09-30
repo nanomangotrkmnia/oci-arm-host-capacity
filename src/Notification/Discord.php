@@ -19,11 +19,20 @@ class Discord implements NotifierInterface
     {
         $webhookUrl = getenv('DISCORD_WEBHOOK_URL');
         $mentionId = getenv('DISCORD_MENTION_ID');
+        $roleId = getenv('DISCORD_MENTION_ROLE_ID');
         $gifUrl = getenv('DISCORD_GIF_URL');
 
+        $mention = '';
+        if ($roleId) {
+            $mention .= "<@&$roleId> ";
+        }
+        if ($mentionId) {
+            $mention .= ctype_digit($mentionId) ? "<@$mentionId> " : "@$mentionId ";
+        }
+
         $payload = [
-            'content' => $this->mention($mentionId) . $message,
-            'allowed_mentions' => ['parse' => ['users']],
+            'content' => $mention . $message,
+            'allowed_mentions' => ['parse' => ['users', 'roles']],
         ];
 
         if ($gifUrl) {
@@ -67,14 +76,5 @@ class Discord implements NotifierInterface
     public function isSupported(): bool
     {
         return !empty(getenv('DISCORD_WEBHOOK_URL'));
-    }
-
-    private function mention(string $mention): string
-    {
-        if (!$mention) {
-            return '';
-        }
-
-        return ctype_digit($mention) ? "<@$mention> " : "@$mention ";
     }
 }
