@@ -98,6 +98,7 @@ jobs:
           export NOTIFY_MESSAGE="OCI ARM: no capacity after ${{ steps.run.outputs.attempts }} attempts this hour. Last result: $summary"
           php notify.php
         env:
+          NOTIFY_NO_GIF: '1'
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
           DISCORD_MENTION_ID: ${{ secrets.DISCORD_MENTION_ID }}
           WHATSAPP_PHONE: ${{ secrets.WHATSAPP_PHONE }}

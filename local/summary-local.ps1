@@ -30,6 +30,7 @@ $lastLine = ($content -split "`n" | Where-Object { $_ -match 'host capacity|TooM
 $lastLine = if ($lastLine) { $lastLine.Trim() } else { 'no response' }
 
 $env:NOTIFY_MESSAGE = "OCI ARM: $attempts attempt(s) in the last hour, still no capacity. Last: $lastLine"
+$env:NOTIFY_NO_GIF = '1'
 
 & $php notify.php
 
