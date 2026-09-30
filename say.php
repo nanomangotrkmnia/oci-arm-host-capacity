@@ -1,20 +1,12 @@
 <?php
 declare(strict_types=1);
 
-require __DIR__ . '/vendor/autoload.php';
+require __DIR__ . '/discord-post.php';
 
-use Dotenv\Dotenv;
-
-$dotenv = Dotenv::createUnsafeImmutable(__DIR__, '.env');
-$dotenv->safeLoad();
-
-$webhookUrl = getenv('DISCORD_WEBHOOK_URL');
-if (!$webhookUrl) {
-    fwrite(STDERR, "DISCORD_WEBHOOK_URL is not set in .env\n");
-    exit(1);
-}
+$verboseFile = __DIR__ . '/verbose.on';
 
 echo "Type a message and press Enter to send it to Discord.\n";
+echo "Commands: /verbose [on|off]  - notify on every capacity attempt\n";
 echo "Press Enter on an empty line (or Ctrl+C) to quit.\n\n";
 
 while (($line = fgets(STDIN)) !== false) {
@@ -23,22 +15,26 @@ while (($line = fgets(STDIN)) !== false) {
         break;
     }
 
-    $curl = curl_init($webhookUrl);
-    curl_setopt_array($curl, [
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT => 10,
-        CURLOPT_POST => true,
-        CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
-        CURLOPT_POSTFIELDS => json_encode(['content' => $message]),
-    ]);
+    if (preg_match('#^/verbose(\s+(on|off))?$#i', $message, $matches)) {
+        $arg = strtolower($matches[2] ?? '');
+        if ($arg === 'on') {
+            file_put_contents($verboseFile, '1');
+        } elseif ($arg === 'off') {
+            @unlink($verboseFile);
+        } elseif (file_exists($verboseFile)) {
+            @unlink($verboseFile);
+        } else {
+            file_put_contents($verboseFile, '1');
+        }
 
-    $response = curl_exec($curl);
-    $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
-    curl_close($curl);
+        echo 'verbose: ' . (file_exists($verboseFile) ? 'ON' : 'OFF') . "\n";
+        continue;
+    }
 
-    if ($httpCode >= 200 && $httpCode < 300) {
+    $result = discord_post($message);
+    if ($result['http_code'] >= 200 && $result['http_code'] < 300) {
         echo "sent\n";
     } else {
-        echo "failed (HTTP $httpCode): $response\n";
+        echo "failed (HTTP {$result['http_code']}): {$result['response']}\n";
     }
 }
