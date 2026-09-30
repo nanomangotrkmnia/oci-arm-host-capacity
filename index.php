@@ -54,6 +54,7 @@ if (getenv('TOO_MANY_REQUESTS_TIME_WAIT')) {
 }
 $notifier = (function (): \Hitrov\Interfaces\NotifierInterface {
     /*
+     * Discord: set DISCORD_WEBHOOK_URL in .env
      * WhatsApp via CallMeBot: set WHATSAPP_PHONE and WHATSAPP_API_KEY in .env
      * Telegram: set TELEGRAM_BOT_API_KEY and TELEGRAM_USER_ID in .env
      *
@@ -61,9 +62,15 @@ $notifier = (function (): \Hitrov\Interfaces\NotifierInterface {
      * otherwise - don't mind OR develop you own NotifierInterface
      * to e.g. send SMS or email.
      */
-    $whatsApp = new \Hitrov\Notification\WhatsApp();
-    if ($whatsApp->isSupported()) {
-        return $whatsApp;
+    foreach ([
+        \Hitrov\Notification\Discord::class,
+        \Hitrov\Notification\WhatsApp::class,
+        \Hitrov\Notification\Telegram::class,
+    ] as $notifierClass) {
+        $notifier = new $notifierClass();
+        if ($notifier->isSupported()) {
+            return $notifier;
+        }
     }
 
     return new \Hitrov\Notification\Telegram();
