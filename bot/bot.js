@@ -87,7 +87,8 @@ client.on(Events.MessageCreate, async (message) => {
     }
 
     const deleted = await clearBotMessages(message.channel, client.user.id);
-    const reply = await message.reply(`Cleared ${deleted} of my message(s).`);
+    await message.delete().catch(() => {});
+    const reply = await message.channel.send(`Cleared ${deleted} of my message(s).`);
     setTimeout(() => reply.delete().catch(() => {}), 5000);
     return;
   }
