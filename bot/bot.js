@@ -70,7 +70,7 @@ async function askAi(prompt) {
       model,
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.6,
-      max_tokens: 1024,
+      max_tokens: 2048,
     }),
   });
 
@@ -80,9 +80,10 @@ async function askAi(prompt) {
   }
 
   const data = await res.json();
-  const content = data && data.choices && data.choices[0]
-    && data.choices[0].message && data.choices[0].message.content;
-  return (content || '').trim() || '(no response)';
+  const msg = data && data.choices && data.choices[0] && data.choices[0].message;
+  if (!msg) return '(no response)';
+
+  return (msg.content || msg.reasoning_content || '').trim() || '(no response)';
 }
 
 async function sendLong(channel, text) {
