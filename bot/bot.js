@@ -71,6 +71,7 @@ async function askAi(prompt) {
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.6,
       max_tokens: 2048,
+      reasoning_effort: 'low',
     }),
   });
 
