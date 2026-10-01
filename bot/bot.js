@@ -54,6 +54,47 @@ async function clearBotMessages(channel, botId) {
   return deleted;
 }
 
+async function askAi(prompt) {
+  const key = process.env.NVIDIA_API_KEY;
+  const model = process.env.NVIDIA_MODEL;
+  if (!key) throw new Error('NVIDIA_API_KEY is not set in .env');
+  if (!model) throw new Error('NVIDIA_MODEL is not set in .env');
+
+  const res = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${key}`,
+    },
+    body: JSON.stringify({
+      model,
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.6,
+      max_tokens: 1024,
+    }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`HTTP ${res.status}: ${text.slice(0, 300)}`);
+  }
+
+  const data = await res.json();
+  const content = data && data.choices && data.choices[0]
+    && data.choices[0].message && data.choices[0].message.content;
+  return (content || '').trim() || '(no response)';
+}
+
+async function sendLong(channel, text) {
+  const limit = 2000;
+  for (let i = 0; i < text.length; i += limit) {
+    await channel.send({
+      content: text.slice(i, i + limit),
+      allowedMentions: { parse: [] },
+    });
+  }
+}
+
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -73,6 +114,28 @@ client.on(Events.MessageCreate, async (message) => {
 
   if (/^[!/]ping$/i.test(content)) {
     await message.reply('pong');
+    return;
+  }
+
+  if (/^[!/]ai(\s|$)/i.test(content)) {
+    const prompt = content.replace(/^[!/]ai/i, '').trim();
+    if (!prompt) {
+      await message.reply('Usage: `!ai <message>`');
+      return;
+    }
+
+    await message.channel.sendTyping().catch(() => {});
+    const typing = setInterval(() => message.channel.sendTyping().catch(() => {}), 8000);
+
+    try {
+      const answer = await askAi(prompt);
+      await sendLong(message.channel, answer);
+    } catch (error) {
+      await message.reply(`AI error: ${error.message}`);
+    } finally {
+      clearInterval(typing);
+    }
+
     return;
   }
 
@@ -96,7 +159,7 @@ client.on(Events.MessageCreate, async (message) => {
   const match = content.match(/^[!/]verbose(?:\s+(on|off|status))?$/i);
   if (!match) {
     if (/^[!/]help$/i.test(content)) {
-      await message.reply('Commands: `!verbose [on|off|status]`, `!clearlogs`, `!ping`');
+      await message.reply('Commands: `!ai <message>`, `!verbose [on|off|status]`, `!clearlogs`, `!ping`');
     }
     return;
   }
